@@ -1,0 +1,26 @@
+[package]
+name = "luddite"
+version = "0.3.0"
+edition = "2021"
+description = "Deterministically erase all evidence of AI/agent involvement from git history"
+license = "Apache-2.0"
+repository = "https://github.com/Niche-Knack-Apps/luddite"
+homepage = "https://nk.tools"
+readme = "README.md"
+
+[[bin]]
+name = "luddite"
+path = "src/main.rs"
+
+[dependencies]
+git2 = { version = "0.19", default-features = false }  # local repos only — no https/ssh transports, no OpenSSL
+clap = { version = "4", features = ["derive"] }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+colored = "2"
+indicatif = "0.17"
+anyhow = "1"
+dirs = "5"
+ratatui = "0.30"     # post-run review screen (commit graph, before/after, push)
+crossterm = "0.29"

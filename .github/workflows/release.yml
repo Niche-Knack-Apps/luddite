@@ -1,0 +1,94 @@
+name: release
+
+# Every push to main that carries a new VERSION becomes a release: native
+# binaries for Linux (static musl), macOS and Windows, SHA256SUMS, tag vX.Y.Z.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  decide:
+    needs: ci
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      new: ${{ steps.v.outputs.new }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          v=$(tr -d '[:space:]' < VERSION)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "v$v already released; nothing to do."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: decide
+    if: needs.decide.outputs.new == 'true'
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, asset: luddite_linux_amd64 }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, asset: luddite_linux_arm64 }
+          - { os: macos-latest, target: aarch64-apple-darwin, asset: luddite_darwin_arm64 }
+          - { os: macos-latest, target: x86_64-apple-darwin, asset: luddite_darwin_amd64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, asset: luddite_windows_amd64.exe }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: musl toolchain
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        shell: bash
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CC_aarch64_unknown_linux_musl: musl-gcc
+        run: |
+          cargo build --release --locked --target "${{ matrix.target }}"
+          mkdir -p dist
+          bin=target/${{ matrix.target }}/release/luddite
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          cp "$bin" "dist/${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  publish:
+    needs: [decide, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.decide.outputs.version }}
+        run: |
+          cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+          gh release create "v$V" ./* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "luddite v$V" --generate-notes \
+            --notes "Download the binary for your platform, check it with \`sha256sum --ignore-missing -c SHA256SUMS\`, and put it on your PATH (git must be on PATH too). More from Niche-Knack at https://nk.tools"

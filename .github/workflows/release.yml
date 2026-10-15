@@ -1,7 +1,7 @@
 name: release
 
-# Every push to main that carries a new VERSION becomes a release: native
-# binaries for Linux (static musl), macOS and Windows, SHA256SUMS, tag vX.Y.Z.
+# Every push to main that carries a new VERSION becomes a release: amd64 +
+# arm64 binaries for Linux (static musl) and macOS, SHA256SUMS, tag vX.Y.Z.
 on:
   push:
     branches: [main]
@@ -49,7 +49,6 @@ jobs:
           - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, asset: luddite_linux_arm64 }
           - { os: macos-latest, target: aarch64-apple-darwin, asset: luddite_darwin_arm64 }
           - { os: macos-latest, target: x86_64-apple-darwin, asset: luddite_darwin_amd64 }
-          - { os: windows-latest, target: x86_64-pc-windows-msvc, asset: luddite_windows_amd64.exe }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -68,7 +67,6 @@ jobs:
           cargo build --release --locked --target "${{ matrix.target }}"
           mkdir -p dist
           bin=target/${{ matrix.target }}/release/luddite
-          [ -f "$bin.exe" ] && bin="$bin.exe"
           cp "$bin" "dist/${{ matrix.asset }}"
       - uses: actions/upload-artifact@v7
         with:

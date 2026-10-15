@@ -48,9 +48,8 @@ full set.
 
 Download the binary for your platform from the
 [latest release](https://github.com/Niche-Knack-Apps/luddite/releases/latest) —
-`luddite_linux_amd64`, `luddite_linux_arm64` (both static), `luddite_darwin_arm64`,
-`luddite_darwin_amd64` or `luddite_windows_amd64.exe` — check it against
-`SHA256SUMS`, and put it on your PATH:
+`luddite_linux_amd64`, `luddite_linux_arm64` (both static), `luddite_darwin_arm64` or
+`luddite_darwin_amd64` — check it against `SHA256SUMS`, and put it on your PATH:
 
 ```sh
 curl -LO https://github.com/Niche-Knack-Apps/luddite/releases/latest/download/luddite_linux_amd64
@@ -252,7 +251,7 @@ git log --all --format='%B%an <%ae>' | grep -iE 'claude|codex|anthropic|openai' 
 
 Every merge to `main` runs formatting, clippy, the tests and `make smoke`. When the
 merge carries a new version in `VERSION` (kept equal to `Cargo.toml`), the release
-workflow builds Linux (static musl), macOS and Windows binaries, tags `vX.Y.Z`, and
+workflow builds amd64 and arm64 binaries for Linux (static musl) and macOS, tags `vX.Y.Z`, and
 publishes them with `SHA256SUMS` as a GitHub release. A pull request that does not
 bump `VERSION` fails its check, so every merge ships.
 
